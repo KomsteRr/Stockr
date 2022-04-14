@@ -56,18 +56,30 @@ app.get('/stockr-items', function (req, res) {
 app.use(body_parser_1.default.json());
 app.post('/add-stockr', function (req, res) {
     try {
+        res.setHeader('Content-Type', 'application/json');
         mongodb_1.MongoClient.connect((db_url + dbname), function (err, db) {
             if (err)
                 throw err;
             let dbo;
             dbo = db.db(dbname);
-            dbo.collection("items").insertOne(req.body, function (err, result) {
-                if (err)
-                    throw err;
-                db.close();
-                res.setHeader('Content-Type', 'application/json');
-                res.end(JSON.stringify(result));
-            });
+            if (req.body.tags != '') {
+                let quantity2add = Number(req.body.in_stock);
+                dbo.collection("items").findOneAndUpdate({ name: req.body.name }, { $inc: { in_stock: quantity2add } }, { upsert: true }, function (err, result) {
+                    if (err)
+                        throw err;
+                    res.end(JSON.stringify(result));
+                    db.close();
+                    return;
+                });
+            }
+            else {
+                dbo.collection("items").insertOne(req.body, function (err, result) {
+                    if (err)
+                        throw err;
+                    res.end(JSON.stringify(result));
+                    db.close();
+                });
+            }
         });
     }
     catch (err) {
@@ -76,18 +88,30 @@ app.post('/add-stockr', function (req, res) {
 });
 app.post('/delete-stockr', function (req, res) {
     try {
+        res.setHeader('Content-Type', 'application/json');
         mongodb_1.MongoClient.connect((db_url + dbname), function (err, db) {
             if (err)
                 throw err;
             let dbo;
             dbo = db.db(dbname);
-            dbo.collection("items").deleteOne(req.body, function (err, result) {
-                if (err)
-                    throw err;
-                db.close();
-                res.setHeader('Content-Type', 'application/json');
-                res.end(JSON.stringify(result));
-            });
+            let quantity2sup = Number(req.body.in_stock);
+            if (req.body.in_stock != '') {
+                dbo.collection("items").findOneAndUpdate({ name: req.body.name }, { $inc: { in_stock: -quantity2sup } }, { upsert: true }, function (err, result) {
+                    if (err)
+                        throw err;
+                    res.end(JSON.stringify(result));
+                    db.close();
+                    return;
+                });
+            }
+            else {
+                dbo.collection("items").deleteOne({ name: req.body.name }, function (err, result) {
+                    if (err)
+                        throw err;
+                    res.end(JSON.stringify(result));
+                    db.close();
+                });
+            }
         });
     }
     catch (err) {
